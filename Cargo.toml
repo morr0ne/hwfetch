@@ -16,7 +16,5 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.86"
-crossterm = "0.27.0"
 owo-colors = "4.0.0"
-ratatui = "0.27.0"
 rustix = { version = "0.38.34", features = ["system", "time", "thread", "process"] }
