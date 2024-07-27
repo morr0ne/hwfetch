@@ -1,24 +1,16 @@
+use std::fmt::Write;
+use std::io::BufRead;
 use std::process::Command;
 use std::{borrow::Cow, collections::BTreeMap, fs};
 
-use std::io::{self, stdout, BufRead};
-
-use crossterm::{
-    event::{self, Event, KeyCode},
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    ExecutableCommand,
-};
-use ratatui::{backend::Backend, buffer::Buffer, layout::Rect};
-use ratatui::{prelude::*, widgets::*};
-
+use anyhow::Result;
+use owo_colors::{DynColors, OwoColorize};
 use rustix::{
     process::geteuid,
     system::{sysinfo, uname},
     thread::ClockId,
     time::{clock_gettime, Timespec},
 };
-
-use owo_colors::{DynColors, OwoColorize};
 
 mod passwd;
 
@@ -70,34 +62,25 @@ const RAINBOW_FLAG: [DynColors; 6] = [
     DynColors::Rgb(156, 89, 209),
 ];
 
-fn main() -> anyhow::Result<()> {
-    // enable_raw_mode()?;
-    // let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
+fn main() -> Result<()> {
+    // let sysinfo = sysinfo();
+    // dbg!(sysinfo);
+    // dbg!(&os_release);
 
-    // terminal.draw(|frame| {
-    //     let frame_size = frame.size();
-    //     frame.render_widget(
-    //         Paragraph::new("Hello Ratatui! (press 'q' to quit)")
-    //             .white()
-    //             .on_blue(),
-    //         Rect::new(frame_size.x, frame_size.y, frame_size.width, 2),
-    //     );
-    // })?;
+    let flag = get_flag_string(ARCH_LOGO, &TRANSGENDER_FLAG)?;
+    let info = get_info_string()?;
 
-    // disable_raw_mode()?;
-    // return Ok(());
-    // let mut backend = buffer::create_backend();
-    // let mut backend =    CrosstermBackend::new(io::stdout());
-    // let mut buffer = Buffer::empty(Rect::new(0, 0, 500, 50));
+    println!("{flag}");
+    println!("{info}");
+
+    Ok(())
+}
+
+fn get_info_string() -> Result<String> {
+    let mut info_string = String::new();
 
     let os_release = parse_os_release();
-    // // let sysinfo = sysinfo();
-    // // dbg!(sysinfo);
-    // // dbg!(&os_release);
-
     let uname = uname();
-
-    print_flag(ARCH_LOGO, &TRANSGENDER_FLAG);
 
     let packages = Command::new("pacman")
         .arg("-Q")
@@ -106,18 +89,37 @@ fn main() -> anyhow::Result<()> {
         .lines()
         .count();
 
-    println!("{}@{}", get_user(), uname.nodename().to_string_lossy());
-    println!("--------------");
-    println!("OS: {}", os_release.get("PRETTY_NAME").unwrap());
-    println!("Arch: {}", std::env::consts::ARCH);
-    println!("Kernel: {}", uname.release().to_string_lossy());
-    println!("Uptime: {}", format_time(clock_gettime(ClockId::Boottime)));
-    println!("Packages: {} (pacman)", packages);
+    writeln!(
+        &mut info_string,
+        "{}@{}",
+        get_user(),
+        uname.nodename().to_string_lossy()
+    )?;
+    writeln!(&mut info_string, "--------------")?;
+    writeln!(
+        &mut info_string,
+        "OS: {}",
+        os_release.get("PRETTY_NAME").unwrap()
+    )?;
+    writeln!(&mut info_string, "Arch: {}", std::env::consts::ARCH)?;
+    writeln!(
+        &mut info_string,
+        "Kernel: {}",
+        uname.release().to_string_lossy()
+    )?;
+    writeln!(
+        &mut info_string,
+        "Uptime: {}",
+        format_time(clock_gettime(ClockId::Boottime))
+    )?;
+    writeln!(&mut info_string, "Packages: {} (pacman)", packages)?;
 
-    Ok(())
+    Ok(info_string)
 }
 
-fn print_flag(logo: &str, flag: &[DynColors]) {
+fn get_flag_string(logo: &str, flag: &[DynColors]) -> Result<String> {
+    let mut flag_string = String::new();
+
     let stripe_size = logo.lines().count() / flag.len();
     // TODO: Dynamically adjust line distribution based on extra lines
     let _extra_lines = logo.lines().count() % flag.len();
@@ -129,8 +131,10 @@ fn print_flag(logo: &str, flag: &[DynColors]) {
             color_index = flag.len() - 1
         }
 
-        println!("{}", line.color(flag[color_index]));
+        writeln!(&mut flag_string, "{}", line.color(flag[color_index])).expect("oopsy");
     }
+
+    Ok(flag_string)
 }
 
 fn get_user() -> String {
