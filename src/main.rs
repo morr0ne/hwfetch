@@ -1,6 +1,4 @@
-use std::{
-    borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command, str::FromStr,
-};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command};
 
 use anyhow::Result;
 use clap::Parser;
@@ -34,7 +32,7 @@ const ARCH_LOGO: &str = r#"
                   .o+`
                  `ooo/
                 `+oooo:
-               `+oooooo:
+               `+ooooolockedo:
                -+oooooo+:
              `/:-:++oooo+:
             `/++++/+++++++:
@@ -118,7 +116,7 @@ const RAINBOW_FLAG: [DynColors; 6] = [
 const DISTANCE: usize = 3;
 
 fn main() -> Result<()> {
-    // let sysinfo = sysinfo();
+    let _sysinfo = sysinfo();
     // dbg!(sysinfo);
     // dbg!(&os_release);
 
