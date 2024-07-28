@@ -38,7 +38,6 @@ dependencies = [
  "itertools",
  "owo-colors",
  "rustix",
- "unicode-width",
 ]
 
 [[package]]
@@ -80,12 +79,6 @@ dependencies = [
  "linux-raw-sys",
  "windows-sys",
 ]
-
-[[package]]
-name = "unicode-width"
-version = "0.1.13"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0336d538f7abc86d282a4189614dfaa90810dfc2c6f6427eaf88e16311dd225d"
 
 [[package]]
 name = "windows-sys"
