@@ -1,6 +1,7 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command};
 
 use anyhow::Result;
+use clap::Parser;
 use itertools::{EitherOrBoth, Itertools};
 use owo_colors::{AnsiColors, DynColors, OwoColorize};
 use rustix::{
@@ -9,6 +10,18 @@ use rustix::{
     thread::ClockId,
     time::{clock_gettime, Timespec},
 };
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Optional distro name, defaults to autodetected distro
+    #[arg(short, long)]
+    distro: Option<String>,
+    /// Sets colors for the flag (allowed values: "transgender"/"trans"/"t",
+    /// "non-binary"/"nonbinary"/"enby"/"nb", "rainbow"/"r")
+    #[arg(short, long)]
+    colors: Option<String>,
+}
 
 mod passwd;
 
@@ -36,6 +49,28 @@ const ARCH_LOGO: &str = r#"
  .`                                 `
 "#;
 
+const NIXOS_LOGO: &str = r###"
+           ,##.      #####.    ###.
+          '####\      #####.  #####
+            ####\      `####.####'
+       ,,,,,,####;,,,,,.`#######'
+      ##################.`#####.      #`
+     ####################.`#####.   ,###`
+           ,MMMM;           '####. ,#####
+         ,#####               ###',#####
+ ,############'                #',##########.
+<###########',                  #############>
+ ''''''####',##               ,#####'''''''''
+      ####',####.            ,#####
+    ,####'  #####.          'WWWW'
+     ###'    '####.`####################'
+      `'      #####.`##################'
+            ,########`''''''#####''''''
+           ,####'`####.      #####.
+          ,####'  `####.      #####
+           "##'    `####'      `##'
+"###;
+
 const TRANSGENDER_FLAG: [DynColors; 5] = [
     DynColors::Rgb(91, 206, 250),
     DynColors::Rgb(245, 169, 184),
@@ -52,12 +87,12 @@ const NONBINARY_FLAG: [DynColors; 4] = [
 ];
 
 const RAINBOW_FLAG: [DynColors; 6] = [
-    DynColors::Rgb(252, 244, 52),
-    DynColors::Rgb(255, 255, 255),
-    DynColors::Rgb(156, 89, 209),
-    DynColors::Rgb(252, 244, 52),
-    DynColors::Rgb(255, 255, 255),
-    DynColors::Rgb(156, 89, 209),
+    DynColors::Rgb(230, 0, 0),
+    DynColors::Rgb(255, 142, 0),
+    DynColors::Rgb(255, 239, 0),
+    DynColors::Rgb(0, 130, 27),
+    DynColors::Rgb(0, 75, 255),
+    DynColors::Rgb(120, 0, 137),
 ];
 
 const DISTANCE: usize = 3;
@@ -67,11 +102,13 @@ fn main() -> Result<()> {
     // dbg!(sysinfo);
     // dbg!(&os_release);
 
-    // let flag = get_flag_string(ARCH_LOGO, &TRANSGENDER_FLAG)?;
-    let flag = ARCH_LOGO;
+    let args = Args::parse();
+
+    let flag = get_logo(args.distro.unwrap_or_else(detect_distro));
+    let colors = get_colors(args.colors.unwrap_or("".into()));
     let info = get_info_string()?;
 
-    let stripe_size = ARCH_LOGO.lines().count() / TRANSGENDER_FLAG.len();
+    let stripe_size = ARCH_LOGO.lines().count() / colors.len();
 
     let longest_line = flag.lines().map(|l| l.len()).max().unwrap();
 
@@ -84,23 +121,23 @@ fn main() -> Result<()> {
 
                 let mut color_index = index / stripe_size;
 
-                if color_index >= TRANSGENDER_FLAG.len() {
-                    color_index = TRANSGENDER_FLAG.len() - 1
+                if color_index >= colors.len() {
+                    color_index = colors.len() - 1
                 }
 
                 println!(
                     "{flag}{spacing}{info}",
-                    flag = flag.color(TRANSGENDER_FLAG[color_index])
+                    flag = flag.color(colors[color_index])
                 )
             }
             EitherOrBoth::Left((index, flag)) => {
                 let mut color_index = index / stripe_size;
 
-                if color_index >= TRANSGENDER_FLAG.len() {
-                    color_index = TRANSGENDER_FLAG.len() - 1
+                if color_index >= colors.len() {
+                    color_index = colors.len() - 1
                 }
 
-                println!("{flag}", flag = flag.color(TRANSGENDER_FLAG[color_index]))
+                println!("{flag}", flag = flag.color(colors[color_index]))
             }
             EitherOrBoth::Right(info) => {
                 let spacing = " ".repeat(longest_line + DISTANCE);
@@ -117,13 +154,23 @@ fn get_info_string() -> Result<String> {
 
     let os_release = parse_os_release();
     let uname = uname();
+    let distro_name = os_release.get("NAME").unwrap();
 
-    let packages = Command::new("pacman")
-        .arg("-Q")
-        .output()?
-        .stdout
-        .lines()
-        .count();
+    let packages = match distro_name.as_ref() {
+        "Arch Linux" => Some(format!("{} (pacman)", Command::new("pacman")
+            .arg("-Q")
+            .output()?
+            .stdout
+            .lines()
+            .count())),
+        "NixOS" => Some(format!("{} (nix)", Command::new("sh")
+            .args(["-c", "nix-store --query --requisites /run/current-system | cut -d- -f2- | grep -o '.\\+[0-9]\\+\\.[0-9a-z.]\\+' | sort | uniq"])
+            .output()?
+            .stdout
+            .lines()
+            .count())),
+        _ => None,
+    };
 
     writeln!(
         &mut info_string,
@@ -160,12 +207,14 @@ fn get_info_string() -> Result<String> {
         "Uptime".color(AnsiColors::Cyan).bold(),
         format_time(clock_gettime(ClockId::Boottime))
     )?;
-    writeln!(
-        &mut info_string,
-        "{}: {} (pacman)",
-        "Packages".color(AnsiColors::Cyan).bold(),
-        packages
-    )?;
+    if let Some(packages) = packages {
+        writeln!(
+            &mut info_string,
+            "{}: {}",
+            "Packages".color(AnsiColors::Cyan).bold(),
+            packages
+        )?;
+    }
 
     Ok(info_string)
 }
@@ -225,4 +274,27 @@ fn parse_os_release() -> BTreeMap<String, String> {
     }
 
     entries
+}
+
+fn detect_distro() -> String {
+    let os_release = parse_os_release();
+    let distro_name = os_release.get("NAME").unwrap();
+    distro_name.clone()
+}
+
+fn get_logo(distro: impl AsRef<str>) -> &'static str {
+    match distro.as_ref().to_lowercase().as_ref() {
+        "arch linux" | "arch" => ARCH_LOGO,
+        "nixos" | "nix" => NIXOS_LOGO,
+        _ => ARCH_LOGO,
+    }
+}
+
+fn get_colors(colors: impl AsRef<str>) -> &'static [DynColors] {
+    match colors.as_ref() {
+        "transgender" | "trans" | "t" => &TRANSGENDER_FLAG,
+        "non-binary" | "nonbinary" | "enby" | "nb" => &NONBINARY_FLAG,
+        "rainbow" | "r" => &RAINBOW_FLAG,
+        _ => &TRANSGENDER_FLAG,
+    }
 }
