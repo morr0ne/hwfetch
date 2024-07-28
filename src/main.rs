@@ -1,10 +1,8 @@
-use std::fmt::Write;
-use std::io::BufRead;
-use std::process::Command;
-use std::{borrow::Cow, collections::BTreeMap, fs};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command};
 
 use anyhow::Result;
-use owo_colors::{DynColors, OwoColorize};
+use itertools::{EitherOrBoth, Itertools};
+use owo_colors::{AnsiColors, DynColors, OwoColorize};
 use rustix::{
     process::geteuid,
     system::{sysinfo, uname},
@@ -62,6 +60,8 @@ const RAINBOW_FLAG: [DynColors; 6] = [
     DynColors::Rgb(156, 89, 209),
 ];
 
+const DISTANCE: usize = 3;
+
 fn main() -> Result<()> {
     // let sysinfo = sysinfo();
     // dbg!(sysinfo);
@@ -70,8 +70,25 @@ fn main() -> Result<()> {
     let flag = get_flag_string(ARCH_LOGO, &TRANSGENDER_FLAG)?;
     let info = get_info_string()?;
 
-    println!("{flag}");
-    println!("{info}");
+    let longest_line = flag.lines().map(|l| l.len()).max().unwrap();
+
+    let info = info.repeat(3);
+
+    let zipped = flag.lines().zip_longest(info.lines());
+
+    for line in zipped {
+        match line {
+            EitherOrBoth::Both(flag, info) => {
+                let spacing = " ".repeat(longest_line - flag.len() + DISTANCE);
+                println!("{flag}{spacing}{info}")
+            }
+            EitherOrBoth::Left(flag) => println!("{flag}"),
+            EitherOrBoth::Right(info) => {
+                let spacing = " ".repeat(longest_line + DISTANCE);
+                println!("{spacing}{info}",)
+            }
+        }
+    }
 
     Ok(())
 }
@@ -92,27 +109,44 @@ fn get_info_string() -> Result<String> {
     writeln!(
         &mut info_string,
         "{}@{}",
-        get_user(),
-        uname.nodename().to_string_lossy()
+        get_user().color(AnsiColors::Cyan).bold(),
+        uname
+            .nodename()
+            .to_string_lossy()
+            .color(AnsiColors::Cyan)
+            .bold()
     )?;
     writeln!(&mut info_string, "--------------")?;
     writeln!(
         &mut info_string,
-        "OS: {}",
+        "{}: {}",
+        "OS".color(AnsiColors::Cyan).bold(),
         os_release.get("PRETTY_NAME").unwrap()
     )?;
-    writeln!(&mut info_string, "Arch: {}", std::env::consts::ARCH)?;
     writeln!(
         &mut info_string,
-        "Kernel: {}",
+        "{}: {}",
+        "Arch".color(AnsiColors::Cyan).bold(),
+        std::env::consts::ARCH
+    )?;
+    writeln!(
+        &mut info_string,
+        "{}: {}",
+        "Kernel".color(AnsiColors::Cyan).bold(),
         uname.release().to_string_lossy()
     )?;
     writeln!(
         &mut info_string,
-        "Uptime: {}",
+        "{}: {}",
+        "Uptime".color(AnsiColors::Cyan).bold(),
         format_time(clock_gettime(ClockId::Boottime))
     )?;
-    writeln!(&mut info_string, "Packages: {} (pacman)", packages)?;
+    writeln!(
+        &mut info_string,
+        "{}: {} (pacman)",
+        "Packages".color(AnsiColors::Cyan).bold(),
+        packages
+    )?;
 
     Ok(info_string)
 }
@@ -131,7 +165,7 @@ fn get_flag_string(logo: &str, flag: &[DynColors]) -> Result<String> {
             color_index = flag.len() - 1
         }
 
-        writeln!(&mut flag_string, "{}", line.color(flag[color_index])).expect("oopsy");
+        writeln!(&mut flag_string, "{}", line.color(flag[color_index]))?;
     }
 
     Ok(flag_string)
