@@ -16,5 +16,7 @@ panic = "abort"
 
 [dependencies]
 anyhow = "1.0.86"
+itertools = "0.13.0"
 owo-colors = "4.0.0"
 rustix = { version = "0.38.34", features = ["system", "time", "thread", "process"] }
+unicode-width = "=0.1.13"
