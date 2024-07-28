@@ -1,4 +1,6 @@
-use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command};
+use std::{
+    borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command, str::FromStr,
+};
 
 use anyhow::Result;
 use clap::Parser;
@@ -16,7 +18,7 @@ use rustix::{
 struct Args {
     /// Optional distro name, defaults to autodetected distro
     #[arg(short, long)]
-    distro: Option<String>,
+    distro: Option<Distro>,
     /// Sets colors for the flag (allowed values: "transgender"/"trans"/"t",
     /// "non-binary"/"nonbinary"/"enby"/"nb", "rainbow"/"r")
     #[arg(short, long)]
@@ -70,6 +72,24 @@ const NIXOS_LOGO: &str = r###"
           ,####'  `####.      #####
            "##'    `####'      `##'
 "###;
+
+const LINUX_LOGO: &str = r#"
+              a8888b.
+             d888888b.
+             8P"YP"Y88
+             8|o||o|88
+             8'    .88
+             8`._.' Y8.
+            d/      `8b.
+          .dP   .     Y8b.
+         d8:'   "   `::88b.
+        d8"           `Y88b
+       :8P     '       :888
+        8a.    :      _a88P
+      ._/"Yaa_ :    .| 88P|
+      \    YP"      `| 8P  `.
+      /     \._____.d|    .'
+      `--..__)888888P`._.'"#;
 
 const TRANSGENDER_FLAG: [DynColors; 5] = [
     DynColors::Rgb(91, 206, 250),
@@ -255,38 +275,56 @@ fn format_time(timespec: Timespec) -> String {
 }
 
 fn parse_os_release() -> BTreeMap<String, String> {
-    let os_release_file =
-        fs::read_to_string("/etc/os-release").expect("Failed to read /etc/os-release");
-
     let mut entries = BTreeMap::new();
 
-    for line in os_release_file.lines() {
-        if line.starts_with('#') || line.is_empty() {
-            continue;
+    if let Ok(os_release_file) = fs::read_to_string("/etc/os-release") {
+        for line in os_release_file.lines() {
+            if line.starts_with('#') || line.is_empty() {
+                continue;
+            }
+
+            if let Some((name, content)) = line.split_once('=') {
+                let name = name.trim();
+                let content = content.trim_matches('"');
+
+                entries.insert(name.to_string(), content.to_string());
+            }
         }
-
-        let (name, content) = line.split_once('=').expect("Invalid config");
-
-        let name = name.trim();
-        let content = content.trim_matches('"');
-
-        entries.insert(name.to_string(), content.to_string());
     }
 
     entries
 }
 
-fn detect_distro() -> String {
-    let os_release = parse_os_release();
-    let distro_name = os_release.get("NAME").unwrap();
-    distro_name.clone()
+#[derive(Debug, Clone)]
+enum Distro {
+    Arch,
+    Nix,
+    Unknown,
 }
 
-fn get_logo(distro: impl AsRef<str>) -> &'static str {
-    match distro.as_ref().to_lowercase().as_ref() {
-        "arch linux" | "arch" => ARCH_LOGO,
-        "nixos" | "nix" => NIXOS_LOGO,
-        _ => ARCH_LOGO,
+impl From<&str> for Distro {
+    fn from(value: &str) -> Self {
+        match value.to_lowercase().as_str() {
+            "arch" | "arch linux" => Self::Arch,
+            "nix" | "nixos" => Self::Nix,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+fn detect_distro() -> Distro {
+    parse_os_release()
+        .get("NAME")
+        .map(|s| s.as_str())
+        .unwrap_or("")
+        .into()
+}
+
+fn get_logo(distro: Distro) -> &'static str {
+    match distro {
+        Distro::Arch => ARCH_LOGO,
+        Distro::Nix => NIXOS_LOGO,
+        _ => LINUX_LOGO,
     }
 }
 
