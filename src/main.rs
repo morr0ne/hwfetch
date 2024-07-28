@@ -67,22 +67,41 @@ fn main() -> Result<()> {
     // dbg!(sysinfo);
     // dbg!(&os_release);
 
-    let flag = get_flag_string(ARCH_LOGO, &TRANSGENDER_FLAG)?;
+    // let flag = get_flag_string(ARCH_LOGO, &TRANSGENDER_FLAG)?;
+    let flag = ARCH_LOGO;
     let info = get_info_string()?;
+
+    let stripe_size = ARCH_LOGO.lines().count() / TRANSGENDER_FLAG.len();
 
     let longest_line = flag.lines().map(|l| l.len()).max().unwrap();
 
-    let info = info.repeat(3);
-
-    let zipped = flag.lines().zip_longest(info.lines());
+    let zipped = flag.lines().enumerate().zip_longest(info.lines());
 
     for line in zipped {
         match line {
-            EitherOrBoth::Both(flag, info) => {
+            EitherOrBoth::Both((index, flag), info) => {
                 let spacing = " ".repeat(longest_line - flag.len() + DISTANCE);
-                println!("{flag}{spacing}{info}")
+
+                let mut color_index = index / stripe_size;
+
+                if color_index >= TRANSGENDER_FLAG.len() {
+                    color_index = TRANSGENDER_FLAG.len() - 1
+                }
+
+                println!(
+                    "{flag}{spacing}{info}",
+                    flag = flag.color(TRANSGENDER_FLAG[color_index])
+                )
             }
-            EitherOrBoth::Left(flag) => println!("{flag}"),
+            EitherOrBoth::Left((index, flag)) => {
+                let mut color_index = index / stripe_size;
+
+                if color_index >= TRANSGENDER_FLAG.len() {
+                    color_index = TRANSGENDER_FLAG.len() - 1
+                }
+
+                println!("{flag}", flag = flag.color(TRANSGENDER_FLAG[color_index]))
+            }
             EitherOrBoth::Right(info) => {
                 let spacing = " ".repeat(longest_line + DISTANCE);
                 println!("{spacing}{info}",)
@@ -149,26 +168,6 @@ fn get_info_string() -> Result<String> {
     )?;
 
     Ok(info_string)
-}
-
-fn get_flag_string(logo: &str, flag: &[DynColors]) -> Result<String> {
-    let mut flag_string = String::new();
-
-    let stripe_size = logo.lines().count() / flag.len();
-    // TODO: Dynamically adjust line distribution based on extra lines
-    let _extra_lines = logo.lines().count() % flag.len();
-
-    for (index, line) in logo.lines().enumerate() {
-        let mut color_index = index / stripe_size;
-
-        if color_index >= flag.len() {
-            color_index = flag.len() - 1
-        }
-
-        writeln!(&mut flag_string, "{}", line.color(flag[color_index]))?;
-    }
-
-    Ok(flag_string)
 }
 
 fn get_user() -> String {
