@@ -20,3 +20,5 @@ clap = { version = "4.5.11", features = ["derive"] }
 itertools = "0.13.0"
 owo-colors = "4.0.0"
 rustix = { version = "0.38.34", features = ["system", "time", "thread", "process"] }
+serde = { version = "1.0.204", features = ["derive"] }
+toml_edit = { version = "0.22.17", features = ["serde"] }
