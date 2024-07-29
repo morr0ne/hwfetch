@@ -16,7 +16,33 @@ paru -S hwfetch-git
 
 ### NixOS
 
-/// TODO
+This repo has a Nix flake.
+
+<details>
+<summary>Detailed Nix instructions</summary>
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "nixpkgs/nixos-unstable";
+    hwfetch.url = "github:morr0ne/hwfetch";
+    hwfetch.inputs.nixpkgs.follows = "nixpkgs";
+  };
+}
+```
+
+It defines the `hwfetch` package, and `default` as an alias to `hwfetch`.
+It also defines a `default` shell.
+
+It can be used in your system installation:
+```nix
+environment.systemPackages = [
+  inputs.hwfetch.packages.${pkgs.system}.hwfetch
+  # or
+  inputs.hwfetch.packages.${pkgs.system}.default
+];
+```
+</details>
 
 ### Manual Installation
 
