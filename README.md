@@ -42,5 +42,6 @@ hardware information. For more information see the configuring section
 ## Acknowledgments
 
 A huge thank you to [Penny](https://github.com/pennybelle/) for her invaluable
-help with the printing logic. And a shout-out to
+help and support.
+
 [pterror](https://github.com/pterror) for adding Nix support.
