@@ -186,12 +186,21 @@ fn get_info_string() -> Result<String> {
             .stdout
             .lines()
             .count())),
-        "NixOS" => Some(format!("{} (nix)", Command::new("sh")
-            .args(["-c", "nix-store --query --requisites /run/current-system | cut -d- -f2- | grep -o '.\\+[0-9]\\+\\.[0-9a-z.]\\+' | sort | uniq"])
-            .output()?
-            .stdout
-            .lines()
-            .count())),
+        "NixOS" => Some(format!(
+            "{} (nix system), {} (nix user)",
+            Command::new("sh")
+                .args(["-c", "nix-store -qR /run/current-system | cut -d- -f2- | grep -o '.\\+[0-9]\\+\\.[0-9a-z.]\\+' | sort | uniq"])
+                .output()?
+                .stdout
+                .lines()
+                .count(),
+            Command::new("sh")
+                .args(["-c", "nix-store -qR $HOME/.nix-profile | cut -d- -f2- | grep -o '.\\+[0-9]\\+\\.[0-9a-z.]\\+' | sort | uniq"])
+                .output()?
+                .stdout
+                .lines()
+                .count(),
+        )),
         _ => None,
     };
 
