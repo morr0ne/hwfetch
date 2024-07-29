@@ -6,17 +6,15 @@ use std::{
 use rustix::process::{Gid, Uid};
 
 pub fn getpwuid(uid: Uid) -> Option<Passwd> {
-    let mut pw = None;
+    let mut parser = Parser::new().ok()?;
 
-    let mut parser = Parser::new().unwrap();
-
-    while let Some(entry) = parser.next_entry().unwrap() {
+    while let Some(entry) = parser.next_entry().ok()? {
         if entry.uid == uid {
-            pw = Some(entry)
+            return Some(entry);
         }
     }
 
-    pw
+    None
 }
 
 #[allow(unused)]
