@@ -2,6 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, proce
 
 use anyhow::Result;
 use clap::Parser;
+use humansize::{format_size, BINARY};
 use itertools::{EitherOrBoth, Itertools};
 use owo_colors::{AnsiColors, DynColors, OwoColorize};
 use rustix::{
@@ -32,7 +33,7 @@ const ARCH_LOGO: &str = r#"
                   .o+`
                  `ooo/
                 `+oooo:
-               `+ooooolockedo:
+               `+oooooo:
                -+oooooo+:
              `/:-:++oooo+:
             `/++++/+++++++:
@@ -116,9 +117,13 @@ const RAINBOW_FLAG: [DynColors; 6] = [
 const DISTANCE: usize = 3;
 
 fn main() -> Result<()> {
-    let _sysinfo = sysinfo();
-    // dbg!(sysinfo);
-    // dbg!(&os_release);
+    let sysinfo = sysinfo();
+    // dbg!(&sysinfo);
+    
+    let _total = format_size(sysinfo.totalram, BINARY);
+    let _used = format_size(sysinfo.totalram - sysinfo.freeram, BINARY);
+
+    // println!("{used} / {total}");
 
     let args = Args::parse();
 
@@ -315,7 +320,7 @@ fn detect_distro() -> Distro {
         .get("NAME")
         .map(|s| s.as_str())
         .unwrap_or("")
-        .into()
+        .into() 
 }
 
 fn get_logo(distro: Distro) -> &'static str {
@@ -333,4 +338,28 @@ fn get_colors(colors: impl AsRef<str>) -> &'static [DynColors] {
         "rainbow" | "r" => &RAINBOW_FLAG,
         _ => &TRANSGENDER_FLAG,
     }
+}
+
+fn _cpuinfo() {
+    let cpuinfo = fs::read_to_string("/proc/cpuinfo").unwrap();
+
+    let mut cpus = Vec::new();
+
+    for info in cpuinfo.split("\n\n").filter(|s| !s.is_empty()) {
+        let mut entries = BTreeMap::new();
+
+        for line in info.lines() {
+            if line.is_empty() {
+                continue;
+            }
+
+            if let Some((name, content)) = line.split_once(':') {
+                entries.insert(name.trim().to_string(), content.trim().to_string());
+            }
+        }
+
+        cpus.push(entries)
+    }
+
+    dbg!(cpus[0].get("model name").unwrap());
 }
