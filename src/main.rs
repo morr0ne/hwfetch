@@ -28,67 +28,9 @@ mod passwd;
 
 use crate::passwd::getpwuid;
 
-const ARCH_LOGO: &str = r#"
-                   -`
-                  .o+`
-                 `ooo/
-                `+oooo:
-               `+oooooo:
-               -+oooooo+:
-             `/:-:++oooo+:
-            `/++++/+++++++:
-           `/++++++++++++++:
-          `/+++ooooooooooooo/`
-         ./ooosssso++osssssso+`
-        .oossssso-````/ossssss+`
-       -osssssso.      :ssssssso.
-      :osssssss/        osssso+++.
-     /ossssssss/        +ssssooo/-
-   `/ossssso+/:-        -:/+osssso+-
-  `+sso+:-`                 `.-/+oso:
- `++:.                           `-/+/
- .`                                 `
-"#;
-
-const NIXOS_LOGO: &str = r###"
-           ,##.      #####.    ###.
-          '####\      #####.  #####
-            ####\      `####.####'
-       ,,,,,,####;,,,,,.`#######'
-      ##################.`#####.      #`
-     ####################.`#####.   ,###`
-           ,MMMM;           '####. ,#####
-         ,#####               ###',#####
- ,############'                #',##########.
-<###########',                  #############>
- ''''''####',##               ,#####'''''''''
-      ####',####.            ,#####
-    ,####'  #####.          'WWWW'
-     ###'    '####.`####################'
-      `'      #####.`##################'
-            ,########`''''''#####''''''
-           ,####'`####.      #####.
-          ,####'  `####.      #####
-           "##'    `####'      `##'
-"###;
-
-const LINUX_LOGO: &str = r#"
-              a8888b.
-             d888888b.
-             8P"YP"Y88
-             8|o||o|88
-             8'    .88
-             8`._.' Y8.
-            d/      `8b.
-          .dP   .     Y8b.
-         d8:'   "   `::88b.
-        d8"           `Y88b
-       :8P     '       :888
-        8a.    :      _a88P
-      ._/"Yaa_ :    .| 88P|
-      \    YP"      `| 8P  `.
-      /     \._____.d|    .'
-      `--..__)888888P`._.'"#;
+const ARCH_LOGO: &str = include_str!("logos/arch.txt");
+const NIXOS_LOGO: &str = include_str!("logos/nixos.txt");
+const LINUX_LOGO: &str = include_str!("logos/linux.txt");
 
 const TRANSGENDER_FLAG: [DynColors; 5] = [
     DynColors::Rgb(91, 206, 250),
@@ -119,7 +61,7 @@ const DISTANCE: usize = 3;
 fn main() -> Result<()> {
     let sysinfo = sysinfo();
     // dbg!(&sysinfo);
-    
+
     let _total = format_size(sysinfo.totalram, BINARY);
     let _used = format_size(sysinfo.totalram - sysinfo.freeram, BINARY);
 
@@ -329,7 +271,7 @@ fn detect_distro() -> Distro {
         .get("NAME")
         .map(|s| s.as_str())
         .unwrap_or("")
-        .into() 
+        .into()
 }
 
 fn get_logo(distro: Distro) -> &'static str {
