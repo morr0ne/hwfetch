@@ -1,5 +1,6 @@
 use std::{borrow::Cow, collections::BTreeMap, fmt::Write, fs, io::BufRead, process::Command};
 
+use acumen::{getpwuid, Cpuinfo, Meminfo, OsRelease};
 use anyhow::Result;
 use clap::Parser;
 use humansize::{format_size, BINARY};
@@ -7,7 +8,7 @@ use itertools::{EitherOrBoth, Itertools};
 use owo_colors::{AnsiColors, DynColors, OwoColorize};
 use rustix::{
     process::geteuid,
-    system::{sysinfo, uname},
+    system::uname,
     thread::ClockId,
     time::{clock_gettime, Timespec},
 };
@@ -23,10 +24,6 @@ struct Args {
     #[arg(short, long)]
     colors: Option<String>,
 }
-
-mod passwd;
-
-use crate::passwd::getpwuid;
 
 const ARCH_LOGO: &str = include_str!("logos/arch.txt");
 const NIXOS_LOGO: &str = include_str!("logos/nixos.txt");
@@ -59,19 +56,14 @@ const RAINBOW_FLAG: [DynColors; 6] = [
 const DISTANCE: usize = 3;
 
 fn main() -> Result<()> {
-    let sysinfo = sysinfo();
-    // dbg!(&sysinfo);
-
-    let _total = format_size(sysinfo.totalram, BINARY);
-    let _used = format_size(sysinfo.totalram - sysinfo.freeram, BINARY);
-
-    // println!("{used} / {total}");
-
     let args = Args::parse();
 
-    let flag = get_logo(args.distro.unwrap_or_else(detect_distro));
+    let os_release = OsRelease::new();
+    let distro = args.distro.unwrap_or(detect_distro(&os_release));
+
+    let flag = get_logo(&distro);
     let colors = get_colors(args.colors.unwrap_or("".into()));
-    let info = get_info_string()?;
+    let info = get_info_string(&distro, &os_release)?;
 
     let stripe_size = ARCH_LOGO.lines().count() / colors.len();
 
@@ -114,21 +106,28 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_info_string() -> Result<String> {
+fn get_info_string(distro: &Distro, os_release: &OsRelease) -> Result<String> {
     let mut info_string = String::new();
+    let meminfo = Meminfo::new();
 
-    let os_release = parse_os_release();
+    let totalram = meminfo.mem_total().unwrap();
+    let freeram = meminfo.get("MemFree").unwrap();
+
+    let total = format_size(totalram, BINARY);
+    let used = format_size(totalram - freeram, BINARY);
+
+    let cpuinfo = Cpuinfo::new();
+
     let uname = uname();
-    let distro_name = os_release.get("NAME").unwrap();
 
-    let packages = match distro_name.as_ref() {
-        "Arch Linux" => Some(format!("{} (pacman)", Command::new("pacman")
+    let packages = match distro {
+        Distro::Arch => Some(format!("{} (pacman)", Command::new("pacman")
             .arg("-Q")
             .output()?
             .stdout
             .lines()
             .count())),
-        "NixOS" => Some(format!(
+        Distro::Nix=> Some(format!(
             "{} (nix system), {} (nix user)",
             Command::new("sh")
                 .args(["-c", "nix-store -qR /run/current-system | cut -d- -f2- | grep -o '.\\+[0-9]\\+\\.[0-9a-z.]\\+' | sort | uniq"])
@@ -189,6 +188,18 @@ fn get_info_string() -> Result<String> {
             packages
         )?;
     }
+    writeln!(
+        &mut info_string,
+        "{}: {used} / {total}",
+        "Memory".color(AnsiColors::Cyan).bold(),
+    )?;
+
+    writeln!(
+        &mut info_string,
+        "{}: {}",
+        "CPU".color(AnsiColors::Cyan).bold(),
+        cpuinfo.cpus()[0].model_name().unwrap()
+    )?;
 
     Ok(info_string)
 }
@@ -228,27 +239,6 @@ fn format_time(timespec: Timespec) -> String {
     format!("{days}{hours}{minutes} mins")
 }
 
-fn parse_os_release() -> BTreeMap<String, String> {
-    let mut entries = BTreeMap::new();
-
-    if let Ok(os_release_file) = fs::read_to_string("/etc/os-release") {
-        for line in os_release_file.lines() {
-            if line.starts_with('#') || line.is_empty() {
-                continue;
-            }
-
-            if let Some((name, content)) = line.split_once('=') {
-                let name = name.trim();
-                let content = content.trim_matches('"');
-
-                entries.insert(name.to_string(), content.to_string());
-            }
-        }
-    }
-
-    entries
-}
-
 #[derive(Debug, Clone)]
 enum Distro {
     Arch,
@@ -266,15 +256,14 @@ impl From<&str> for Distro {
     }
 }
 
-fn detect_distro() -> Distro {
-    parse_os_release()
-        .get("NAME")
-        .map(|s| s.as_str())
-        .unwrap_or("")
+fn detect_distro(os_release: &OsRelease) -> Distro {
+    os_release
+        .id()
+        .unwrap_or(os_release.name().unwrap_or(""))
         .into()
 }
 
-fn get_logo(distro: Distro) -> &'static str {
+fn get_logo(distro: &Distro) -> &'static str {
     match distro {
         Distro::Arch => ARCH_LOGO,
         Distro::Nix => NIXOS_LOGO,
@@ -289,28 +278,4 @@ fn get_colors(colors: impl AsRef<str>) -> &'static [DynColors] {
         "rainbow" | "r" => &RAINBOW_FLAG,
         _ => &TRANSGENDER_FLAG,
     }
-}
-
-fn _cpuinfo() {
-    let cpuinfo = fs::read_to_string("/proc/cpuinfo").unwrap();
-
-    let mut cpus = Vec::new();
-
-    for info in cpuinfo.split("\n\n").filter(|s| !s.is_empty()) {
-        let mut entries = BTreeMap::new();
-
-        for line in info.lines() {
-            if line.is_empty() {
-                continue;
-            }
-
-            if let Some((name, content)) = line.split_once(':') {
-                entries.insert(name.trim().to_string(), content.trim().to_string());
-            }
-        }
-
-        cpus.push(entries)
-    }
-
-    dbg!(cpus[0].get("model name").unwrap());
 }
