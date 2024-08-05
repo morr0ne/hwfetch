@@ -4,8 +4,9 @@ version = 3
 
 [[package]]
 name = "acumen"
-version = "0.0.1"
-source = "git+https://github.com/morr0ne/acumen.git#75675fec6521165e231e0d7b550da208acdcbfc4"
+version = "0.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0bb257f52fb7e2eaee23e5bcbe9096f87a22e33b6084aabb890e2b67eb6d08f"
 dependencies = [
  "rustix",
 ]

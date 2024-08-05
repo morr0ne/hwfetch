@@ -15,7 +15,7 @@ strip = true
 panic = "abort"
 
 [dependencies]
-acumen = { git = "https://github.com/morr0ne/acumen.git", version = "0.0.1" }
+acumen = "0.0.2"
 anyhow = "1.0.86"
 clap = { version = "4.5.11", features = ["derive"] }
 humansize = "2.1.3"
