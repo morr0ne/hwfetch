@@ -111,10 +111,10 @@ fn get_info_string(distro: &Distro, os_release: &OsRelease) -> Result<String> {
     let meminfo = Meminfo::new();
 
     let totalram = meminfo.mem_total().unwrap();
-    let freeram = meminfo.get("MemFree").unwrap();
+    let freeram = meminfo.get("MemAvailable").unwrap();
 
-    let total = format_size(totalram, BINARY);
-    let used = format_size(totalram - freeram, BINARY);
+    let total = format_size((totalram) * 1024, BINARY);
+    let used = format_size((totalram - freeram) * 1024, BINARY);
 
     let cpuinfo = Cpuinfo::new();
 
