@@ -16,11 +16,16 @@ panic = "abort"
 
 [dependencies]
 acumen = "0.0.2"
-anyhow = "1.0.86"
-clap = { version = "4.5.11", features = ["derive"] }
+anyhow = "1.0.89"
+clap = { version = "4.5.19", features = ["derive"] }
 humansize = "2.1.3"
 itertools = "0.13.0"
-owo-colors = "4.0.0"
-rustix = { version = "0.38.34", features = ["system", "time", "thread", "process"] }
-serde = { version = "1.0.204", features = ["derive"] }
-toml_edit = { version = "0.22.17", features = ["serde"] }
+owo-colors = "4.1.0"
+rustix = { version = "0.38.37", features = [
+    "system",
+    "time",
+    "thread",
+    "process",
+] }
+serde = { version = "1.0.210", features = ["derive"] }
+toml_edit = { version = "0.22.22", features = ["serde"] }
