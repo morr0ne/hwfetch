@@ -28,4 +28,6 @@ rustix = { version = "0.38.37", features = [
     "process",
 ] }
 serde = { version = "1.0.210", features = ["derive"] }
+tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros"] }
 toml_edit = { version = "0.22.22", features = ["serde"] }
+wgpu = { version = "22.1.0", default-features = false }
