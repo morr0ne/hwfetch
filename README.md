@@ -31,10 +31,11 @@ This repo has a Nix flake.
 }
 ```
 
-It defines the `hwfetch` package, and `default` as an alias to `hwfetch`.
-It also defines a `default` shell.
+It defines the `hwfetch` package, and `default` as an alias to `hwfetch`. It
+also defines a `default` shell.
 
 It can be used in your system installation:
+
 ```nix
 environment.systemPackages = [
   inputs.hwfetch.packages.${pkgs.system}.hwfetch
@@ -42,6 +43,7 @@ environment.systemPackages = [
   inputs.hwfetch.packages.${pkgs.system}.default
 ];
 ```
+
 </details>
 
 ### Manual Installation
@@ -65,9 +67,8 @@ hwfetch
 This will print a detailed and beautifully formatted summary of your system's
 hardware information. For more information see the configuring section
 
-## Acknowledgments
+## License
 
-A huge thank you to [Penny](https://github.com/pennybelle/) for her invaluable
-help and support.
-
-[pterror](https://github.com/pterror) for adding Nix support.
+This project is licensed under the
+[Apache-2.0 License](http://www.apache.org/licenses/LICENSE-2.0). For more
+information, please see the [LICENSE](LICENSE) file.
